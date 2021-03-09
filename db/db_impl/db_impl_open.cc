@@ -1203,6 +1203,7 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
       delete handles[1];
     }
     delete handles[0];
+    // port::Thread mythread = port::Thread();
   }
   return s;
 }

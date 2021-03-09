@@ -1480,6 +1480,9 @@ class DBImpl : public DB {
   // dump rocksdb.stats to LOG
   void DumpStats();
 
+  // send client metrics to server / receive and set configs
+  void ClientSendMsg();
+
   // Return the minimum empty level that could hold the total data in the
   // input level. Return the input level, if such level could not be found.
   int FindMinimumEmptyLevelFitting(ColumnFamilyData* cfd,
@@ -1849,6 +1852,10 @@ class DBImpl : public DB {
   // Callback for when the cached_recoverable_state_ is written to memtable
   // Only to be set during initialization
   std::unique_ptr<PreReleaseCallback> recoverable_state_pre_release_callback_;
+
+  // handle for scheduling client message sending at fixed intervals
+  // REQUIRES: mutex locked
+  std::unique_ptr<rocksdb::RepeatableThread> thread_send_client_msgs_;
 
   // handle for scheduling stats dumping at fixed intervals
   // REQUIRES: mutex locked

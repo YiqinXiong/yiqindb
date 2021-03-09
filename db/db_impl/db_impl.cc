@@ -394,6 +394,10 @@ void DBImpl::CancelAllBackgroundWork(bool wait) {
   ROCKS_LOG_INFO(immutable_db_options_.info_log,
                  "Shutdown: canceling all background work");
 
+  if (thread_send_client_msgs_ != nullptr){
+    thread_send_client_msgs_->cancel();
+    thread_send_client_msgs_.reset();
+  }
   if (thread_dump_stats_ != nullptr) {
     thread_dump_stats_->cancel();
     thread_dump_stats_.reset();
@@ -642,6 +646,12 @@ void DBImpl::StartTimedTasks() {
   unsigned int stats_persist_period_sec = 0;
   {
     InstrumentedMutexLock l(&mutex_);
+    // create thread of sending client message to AI-Tuner server every 30 sec.
+    if (!thread_send_client_msgs_) {
+      thread_send_client_msgs_.reset(new rocksdb::RepeatableThread(
+          [this]() { DBImpl::ClientSendMsg(); }, "client_send_msg", env_,
+          static_cast<uint64_t>(30U) * kMicrosInSecond));
+    }
     stats_dump_period_sec = mutable_db_options_.stats_dump_period_sec;
     if (stats_dump_period_sec > 0) {
       if (!thread_dump_stats_) {
@@ -862,6 +872,19 @@ void DBImpl::DumpStats() {
 #endif  // !ROCKSDB_LITE
 
   PrintStatistics();
+}
+
+void DBImpl::ClientSendMsg() {
+  std::string stats,options_default_cf;
+  if (this->GetProperty("rocksdb.stats", &stats)) {
+    fprintf(stderr, "%s\n", stats.c_str());
+  }
+  Options opt = this->GetOptions();
+  int new_max_write_buffer_number = opt.max_write_buffer_number + 1;
+  this->SetOptions({
+      {"max_write_buffer_number", std::to_string(new_max_write_buffer_number)},
+  });
+
 }
 
 void DBImpl::ScheduleBgLogWriterClose(JobContext* job_context) {
