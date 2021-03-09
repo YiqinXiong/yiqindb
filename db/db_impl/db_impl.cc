@@ -644,15 +644,17 @@ void DBImpl::PrintStatistics() {
 void DBImpl::StartTimedTasks() {
   unsigned int stats_dump_period_sec = 0;
   unsigned int stats_persist_period_sec = 0;
+  unsigned int send_client_msgs_period_sec = 30;
   {
     InstrumentedMutexLock l(&mutex_);
     // create thread of sending client message to AI-Tuner server every 30 sec.
     if (!thread_send_client_msgs_) {
       thread_send_client_msgs_.reset(new rocksdb::RepeatableThread(
-          [this]() { DBImpl::ClientSendMsg(); }, "client_send_msg", env_,
-          static_cast<uint64_t>(30U) * kMicrosInSecond));
+          [this]() { DBImpl::ClientSendMsg(); }, "cli_msg", env_,
+          static_cast<uint64_t>(send_client_msgs_period_sec) * kMicrosInSecond));
     }
     stats_dump_period_sec = mutable_db_options_.stats_dump_period_sec;
+    // stats_dump_period_sec = 30;
     if (stats_dump_period_sec > 0) {
       if (!thread_dump_stats_) {
         thread_dump_stats_.reset(new rocksdb::RepeatableThread(
@@ -875,10 +877,15 @@ void DBImpl::DumpStats() {
 }
 
 void DBImpl::ClientSendMsg() {
+  TEST_SYNC_POINT("DBImpl::ClientSendMsg:1");
+  if (shutdown_initiated_) {
+    return;
+  }
   std::string stats,options_default_cf;
   if (this->GetProperty("rocksdb.stats", &stats)) {
     fprintf(stderr, "%s\n", stats.c_str());
   }
+  TEST_SYNC_POINT("DBImpl::ClientSendMsg:2");
   Options opt = this->GetOptions();
   int new_max_write_buffer_number = opt.max_write_buffer_number + 1;
   this->SetOptions({
