@@ -24,6 +24,12 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <unistd.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include "db/builder.h"
 #include "db/compaction/compaction_job.h"
@@ -887,11 +893,63 @@ void DBImpl::ClientSendMsg() {
   }
   TEST_SYNC_POINT("DBImpl::ClientSendMsg:2");
   Options opt = this->GetOptions();
-  int new_max_write_buffer_number = opt.max_write_buffer_number + 1;
+  TEST_SYNC_POINT("DBImpl::ClientSendMsg:3");
+  int sockfd = 0;
+  struct hostent *host;
+  struct sockaddr_in serv_addr;
+  const char *HOSTNAME = "localhost";
+  const int SERVPORT = 8411;
+  const int MAXDATASIZE = 1024;
+  int recv_bytes = 0;
+  char recv_buf[MAXDATASIZE];
+  char send_buf[MAXDATASIZE];
+
+  if ((host = gethostbyname(HOSTNAME)) == NULL)
+    fprintf(stderr, "gethostbyname error!\n");
+  //建立socket
+  if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    fprintf(stderr, "socket create error!\n");
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(SERVPORT);
+  serv_addr.sin_addr = *((struct in_addr *)host->h_addr);
+  bzero(&(serv_addr.sin_zero), 8);
+  //请求连接
+  if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr)) == -1) {
+    fprintf(stderr, "connect error!\n");
+    close(sockfd);
+    return;
+  }
+  //握手
+  if ((recv_bytes = recv(sockfd, recv_buf, MAXDATASIZE, 0)) == -1) {
+    fprintf(stderr, "shake hands error!\n");
+    close(sockfd);
+    return;
+  }
+  recv_buf[recv_bytes] = '\0';
+  fprintf(stderr, "client <-- server: [%s]\n", recv_buf);
+  //发送数据
+  sprintf(send_buf,"max_write_buffer_number:%d",opt.max_write_buffer_number);
+  send(sockfd, send_buf, strlen(send_buf), 0);
+  fprintf(stderr, "client --> server: [%s]\n", send_buf);
+  //接收数据
+  if ((recv_bytes = recv(sockfd, recv_buf, MAXDATASIZE, 0)) == -1) {
+    fprintf(stderr, "recv error!\n");
+    close(sockfd);
+    return;
+  }
+  recv_buf[recv_bytes] = '\0';
+  fprintf(stderr, "client <-- server: [%s]\n", recv_buf);
+  //根据接收数据修改参数
+  char * pos = strchr(recv_buf, ':');
+  int new_max_write_buffer_number = atoi(pos + 1);
+  fprintf(stderr, "new param:%s, new param value:%d\n", pos, new_max_write_buffer_number);
+  //关闭连接
+  close(sockfd);
+  TEST_SYNC_POINT("DBImpl::ClientSendMsg:4");
+  //应用新参数到RocksDB
   this->SetOptions({
       {"max_write_buffer_number", std::to_string(new_max_write_buffer_number)},
   });
-
 }
 
 void DBImpl::ScheduleBgLogWriterClose(JobContext* job_context) {
