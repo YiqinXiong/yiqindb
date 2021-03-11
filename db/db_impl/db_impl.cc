@@ -30,6 +30,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <fstream>
 
 #include "db/builder.h"
 #include "db/compaction/compaction_job.h"
@@ -104,6 +105,7 @@
 #include "util/mutexlock.h"
 #include "util/stop_watch.h"
 #include "util/string_util.h"
+#include "rocksdb/utilities/options_util.h"
 
 namespace rocksdb {
 const std::string kDefaultColumnFamilyName("default");
@@ -887,39 +889,66 @@ void DBImpl::ClientSendMsg() {
   if (shutdown_initiated_) {
     return;
   }
-  std::string stats,options_default_cf;
-  if (this->GetProperty("rocksdb.stats", &stats)) {
-    fprintf(stderr, "%s\n", stats.c_str());
+  std::string db_stats, db_cfstats, old_stats_str, old_options_str, latest_options_filename;
+  Options options = this->GetOptions();
+  //获取RocksDB状态信息
+  if (this->GetProperty("rocksdb.stats", &db_stats)) {
+    if(db_stats.find("Uptime(secs): 0.0 total, 0.0 interval") != std::string::npos){
+      return;
+    }
+    fprintf(stderr, "db_stats:%s\n", db_stats.c_str());
   }
+  // if (this->GetProperty("rocksdb.cfstats", &db_cfstats)) {
+  //   fprintf(stderr, "db_cfstats:%s\n", db_cfstats.c_str());
+  // }
+  // if (options.statistics){
+  //   fprintf(stderr, "%s\n", db_stats.c_str());
+  //   old_stats_str = options.statistics->ToString();
+  // }else{
+  //   old_stats_str = "";
+  // }
+  // old_stats_str = db_stats + db_cfstats;
+  old_stats_str = db_stats;
   TEST_SYNC_POINT("DBImpl::ClientSendMsg:2");
-  Options opt = this->GetOptions();
+  //获取RocksDB参数配置
+  GetLatestOptionsFileName(this->dbname_, options.env, &latest_options_filename);
+  latest_options_filename = this->dbname_ + "/" + latest_options_filename;
+  fprintf(stderr, "latest_options_filename:%s\n",latest_options_filename.c_str());
+  std::ifstream in(latest_options_filename);
+  if(!in){
+    fprintf(stderr, "[error]open options file failed:%s\n",latest_options_filename.c_str());
+    return;
+  }else{
+    old_options_str.assign(std::istreambuf_iterator<char>{in}, std::istreambuf_iterator<char>{});
+  }
   TEST_SYNC_POINT("DBImpl::ClientSendMsg:3");
+  //socket网络传输
   int sockfd = 0;
   struct hostent *host;
   struct sockaddr_in serv_addr;
   const char *HOSTNAME = "localhost";
   const int SERVPORT = 8411;
-  const int MAXDATASIZE = 1024;
+  const int MAXDATASIZE = 4096;
   int recv_bytes = 0;
   char recv_buf[MAXDATASIZE];
-  char send_buf[MAXDATASIZE];
+  // char send_buf[MAXDATASIZE];
 
   if ((host = gethostbyname(HOSTNAME)) == NULL)
     fprintf(stderr, "gethostbyname error!\n");
-  //建立socket
+  //1.建立socket
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     fprintf(stderr, "socket create error!\n");
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(SERVPORT);
   serv_addr.sin_addr = *((struct in_addr *)host->h_addr);
   bzero(&(serv_addr.sin_zero), 8);
-  //请求连接
+  //2.请求连接
   if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr)) == -1) {
     fprintf(stderr, "connect error!\n");
     close(sockfd);
     return;
   }
-  //握手
+  //3.握手
   if ((recv_bytes = recv(sockfd, recv_buf, MAXDATASIZE, 0)) == -1) {
     fprintf(stderr, "shake hands error!\n");
     close(sockfd);
@@ -927,10 +956,10 @@ void DBImpl::ClientSendMsg() {
   }
   recv_buf[recv_bytes] = '\0';
   fprintf(stderr, "client <-- server: [%s]\n", recv_buf);
-  //发送数据
-  sprintf(send_buf,"max_write_buffer_number:%d",opt.max_write_buffer_number);
-  send(sockfd, send_buf, strlen(send_buf), 0);
-  fprintf(stderr, "client --> server: [%s]\n", send_buf);
+  //4.发送数据
+  std::string send_data = old_stats_str + "&&&" + old_options_str;
+  send(sockfd, send_data.c_str(), send_data.length(), 0);
+  // fprintf(stderr, "client --> server: [%s]\n", send_data.c_str());
   //接收数据
   if ((recv_bytes = recv(sockfd, recv_buf, MAXDATASIZE, 0)) == -1) {
     fprintf(stderr, "recv error!\n");
