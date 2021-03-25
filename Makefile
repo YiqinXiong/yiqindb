@@ -1634,7 +1634,7 @@ install-headers:
 	for header_dir in `$(FIND) "include/rocksdb" -type d`; do \
 		install -d $(INSTALL_PATH)/$$header_dir; \
 	done
-	for header in `$(FIND) "include/rocksdb" -type f -name *.h`; do \
+	for header in `$(FIND) "include/rocksdb" -type f -name *.h*`; do \
 		install -C -m 644 $$header $(INSTALL_PATH)/$$header; \
 	done
 

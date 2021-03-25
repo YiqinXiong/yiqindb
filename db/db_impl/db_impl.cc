@@ -106,6 +106,7 @@
 #include "util/stop_watch.h"
 #include "util/string_util.h"
 #include "rocksdb/utilities/options_util.h"
+#include "rocksdb/jsonxx/json.hpp"
 
 namespace rocksdb {
 const std::string kDefaultColumnFamilyName("default");
