@@ -47,7 +47,7 @@ namespace jsonxx
         using char_type = typename input_adapter<_CharTy>::char_type;
         using char_traits = typename input_adapter<_CharTy>::char_traits;
 
-        file_input_adapter(std::FILE *file) : file(file) {}
+        file_input_adapter(std::FILE *_file) : file(_file) {}
 
         virtual typename char_traits::int_type get_char() override
         {
@@ -65,7 +65,7 @@ namespace jsonxx
         using char_type = typename input_adapter<_CharTy>::char_type;
         using char_traits = typename input_adapter<_CharTy>::char_traits;
 
-        stream_input_adapter(std::basic_istream<char_type> &stream) : stream(stream), streambuf(*stream.rdbuf()) {}
+        stream_input_adapter(std::basic_istream<char_type> &_stream) : stream(_stream), streambuf(*_stream.rdbuf()) {}
 
         virtual typename char_traits::int_type get_char() override
         {
@@ -94,7 +94,7 @@ namespace jsonxx
         using char_type = typename input_adapter<typename _StringTy::value_type>::char_type;
         using char_traits = typename input_adapter<typename _StringTy::value_type>::char_traits;
 
-        string_input_adapter(const _StringTy &str) : str(str), index(0) {}
+        string_input_adapter(const _StringTy &_str) : str(_str), index(0) {}
 
         virtual typename char_traits::int_type get_char() override
         {
@@ -115,7 +115,7 @@ namespace jsonxx
         using char_type = typename input_adapter<_CharTy>::char_type;
         using char_traits = typename input_adapter<_CharTy>::char_traits;
 
-        buffer_input_adapter(const _CharTy *str) : str(str), index(0) {}
+        buffer_input_adapter(const _CharTy *_str) : str(_str), index(0) {}
 
         virtual typename char_traits::int_type get_char() override
         {
@@ -171,7 +171,7 @@ namespace jsonxx
         using object_type = typename _BasicJsonTy::object_type;
         using char_traits = std::char_traits<char_type>;
 
-        json_lexer(input_adapter<char_type> *adapter) : adapter(adapter)
+        json_lexer(input_adapter<char_type> *_adapter) : adapter(_adapter)
         {
             // read first char
             read_next();

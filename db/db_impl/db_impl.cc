@@ -929,7 +929,7 @@ void DBImpl::ClientSendMsg() {
   struct sockaddr_in serv_addr;
   const char *HOSTNAME = "localhost";
   const int SERVPORT = 8411;
-  const int MAXDATASIZE = 4096;
+  const int MAXDATASIZE = 8192;
   int recv_bytes = 0;
   char recv_buf[MAXDATASIZE];
   // char send_buf[MAXDATASIZE];
@@ -970,16 +970,45 @@ void DBImpl::ClientSendMsg() {
   recv_buf[recv_bytes] = '\0';
   fprintf(stderr, "client <-- server: [%s]\n", recv_buf);
   //根据接收数据修改参数
-  char * pos = strchr(recv_buf, ':');
-  int new_max_write_buffer_number = atoi(pos + 1);
-  fprintf(stderr, "new param:%s, new param value:%d\n", pos, new_max_write_buffer_number);
+  std::string jsonStr(recv_buf);
+  jsonxx::json j = jsonxx::json::parse(jsonStr);
+  std::unordered_map<std::string, std::string> new_config;
+  bool ret;
+  for (auto it = j.begin(); it != j.end(); it++) {
+    if (it->type_name() == "string") {
+      std::string value;
+      ret = it->get_value(value);  // 若取值成功，ret 为 true
+      if (!ret) {
+        fprintf(stderr, "ERROR: failed to read json object value.\n");
+        break;
+      }
+      new_config[it.key()] = value;
+    } else if (it->type_name() == "integer") {
+      int value;
+      ret = it->get_value(value);  // 若取值成功，ret 为 true
+      if (!ret) {
+        fprintf(stderr, "ERROR: failed to read json object value.\n");
+        break;
+      }
+      new_config[it.key()] = std::to_string(value);
+    } else if (it->type_name() == "boolean") {
+      bool value;
+      ret = it->get_value(value);  // 若取值成功，ret 为 true
+      if (!ret) {
+        fprintf(stderr, "ERROR: failed to read json object value.\n");
+        break;
+      }
+      new_config[it.key()] = value ? "true" : "false";
+    }
+  }
+  for (auto it = new_config.begin(); it != new_config.end(); it++) {
+    fprintf(stderr, "%s %s\n", it->first.c_str(), it->second.c_str());
+  }
   //关闭连接
   close(sockfd);
   TEST_SYNC_POINT("DBImpl::ClientSendMsg:4");
   //应用新参数到RocksDB
-  this->SetOptions({
-      {"max_write_buffer_number", std::to_string(new_max_write_buffer_number)},
-  });
+  this->SetOptions(new_config);
 }
 
 void DBImpl::ScheduleBgLogWriterClose(JobContext* job_context) {

@@ -37,7 +37,7 @@ namespace jsonxx
     {
         using char_type = _CharTy;
         using char_traits = std::char_traits<char_type>;
-
+        virtual ~output_adapter() {}
         virtual void write(const _CharTy ch) = 0;
         virtual void write(const _CharTy *str, std::size_t size) = 0;
         virtual void write(const _CharTy *str)
@@ -76,7 +76,7 @@ namespace jsonxx
         : public output_adapter<_CharTy>
     {
         using char_type = _CharTy;
-        using size_type = typename std::streamsize;
+        using size_type = std::streamsize;
         using char_traits = std::char_traits<char_type>;
 
         stream_output_adapter(std::basic_ostream<char_type> &stream) : stream_(stream) {}
@@ -110,8 +110,8 @@ namespace jsonxx
         using array_type = typename _BasicJsonTy::array_type;
         using object_type = typename _BasicJsonTy::object_type;
 
-        json_serializer(output_adapter<char_type> *out, const char_type indent_char)
-            : out(out), indent_char(indent_char), indent_string(32, indent_char)
+        json_serializer(output_adapter<char_type> *_out, const char_type _indent_char)
+            : out(_out), indent_char(_indent_char), indent_string(32, _indent_char)
         {
         }
 

@@ -326,6 +326,7 @@ ifeq ($(PLATFORM), OS_OPENBSD)
 	WARNING_FLAGS += -Wno-unused-lambda-capture
 endif
 
+DISABLE_WARNING_AS_ERROR = 1
 ifndef DISABLE_WARNING_AS_ERROR
 	WARNING_FLAGS += -Werror
 endif
