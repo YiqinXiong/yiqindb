@@ -653,7 +653,7 @@ void DBImpl::PrintStatistics() {
 void DBImpl::StartTimedTasks() {
   unsigned int stats_dump_period_sec = 0;
   unsigned int stats_persist_period_sec = 0;
-  unsigned int send_client_msgs_period_sec = 30;
+  unsigned int send_client_msgs_period_sec = 300;
   {
     InstrumentedMutexLock l(&mutex_);
     // create thread of sending client message to AI-Tuner server every 30 sec.
@@ -897,7 +897,7 @@ void DBImpl::ClientSendMsg() {
     if(db_stats.find("Uptime(secs): 0.0 total, 0.0 interval") != std::string::npos){
       return;
     }
-    fprintf(stderr, "db_stats:%s\n", db_stats.c_str());
+    // fprintf(stderr, "db_stats:%s\n", db_stats.c_str());
   }
   // if (this->GetProperty("rocksdb.cfstats", &db_cfstats)) {
   //   fprintf(stderr, "db_cfstats:%s\n", db_cfstats.c_str());
@@ -943,6 +943,8 @@ void DBImpl::ClientSendMsg() {
   serv_addr.sin_port = htons(SERVPORT);
   serv_addr.sin_addr = *((struct in_addr *)host->h_addr);
   bzero(&(serv_addr.sin_zero), 8);
+  int nNetTimeout = 60 * 1000;  //超时时间60s
+  setsockopt(sockfd,SOL_SOCKET,SO_RCVTIMEO, (char *)&nNetTimeout, sizeof(int));
   //2.请求连接
   if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr)) == -1) {
     fprintf(stderr, "connect error!\n");

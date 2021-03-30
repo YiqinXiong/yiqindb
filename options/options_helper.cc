@@ -790,10 +790,12 @@ Status GetMutableOptionsFromStrings(
     try {
       auto iter = cf_options_type_info.find(o.first);
       if (iter == cf_options_type_info.end()) {
+        fprintf(stderr, "Unrecognized option: %s\n", o.first.c_str());
         return Status::InvalidArgument("Unrecognized option: " + o.first);
       }
       const auto& opt_info = iter->second;
       if (!opt_info.is_mutable) {
+        fprintf(stderr, "Option not changeable: %s\n", o.first.c_str());
         return Status::InvalidArgument("Option not changeable: " + o.first);
       }
       if (opt_info.verification == OptionVerificationType::kDeprecated) {
@@ -807,9 +809,11 @@ Status GetMutableOptionsFromStrings(
           reinterpret_cast<char*>(new_options) + opt_info.mutable_offset,
           opt_info.type, o.second);
       if (!is_ok) {
+        fprintf(stderr, "Error parsing %s\n", o.first.c_str());
         return Status::InvalidArgument("Error parsing " + o.first);
       }
     } catch (std::exception& e) {
+      fprintf(stderr, "Error parsing %s:%s\n", o.first.c_str(), std::string(e.what()).c_str());
       return Status::InvalidArgument("Error parsing " + o.first + ":" +
                                      std::string(e.what()));
     }
