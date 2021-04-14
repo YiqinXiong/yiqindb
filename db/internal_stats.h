@@ -111,6 +111,8 @@ class InternalStats {
   enum InternalDBStatsType {
     WAL_FILE_BYTES,
     WAL_FILE_SYNCED,
+    NUMBER_KEYS_READ,
+    BYTES_READ,
     BYTES_WRITTEN,
     NUMBER_KEYS_WRITTEN,
     WRITE_DONE_BY_OTHER,
@@ -472,6 +474,8 @@ class InternalStats {
 
   struct DBStatsSnapshot {
     // DB-level stats
+    uint64_t num_keys_read;
+    uint64_t read_bytes;              // Bytes read by user
     uint64_t ingest_bytes;            // Bytes written by user
     uint64_t wal_bytes;               // Bytes written to WAL
     uint64_t wal_synced;              // Number of times WAL is synced
@@ -490,7 +494,9 @@ class InternalStats {
     double seconds_up;
 
     DBStatsSnapshot()
-        : ingest_bytes(0),
+        : num_keys_read(0),
+          read_bytes(0),
+          ingest_bytes(0),
           wal_bytes(0),
           wal_synced(0),
           write_with_wal(0),
@@ -501,6 +507,8 @@ class InternalStats {
           seconds_up(0) {}
 
     void Clear() {
+      num_keys_read = 0;
+      read_bytes = 0;
       ingest_bytes = 0;
       wal_bytes = 0;
       wal_synced = 0;

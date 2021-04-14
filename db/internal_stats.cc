@@ -954,6 +954,8 @@ void InternalStats::DumpDBStats(std::string* value) {
            seconds_up, interval_seconds_up);
   value->append(buf);
   // Cumulative
+  uint64_t num_keys_read = GetDBStats(InternalStats::NUMBER_KEYS_READ);
+  uint64_t user_bytes_read = GetDBStats(InternalStats::BYTES_READ);
   uint64_t user_bytes_written = GetDBStats(InternalStats::BYTES_WRITTEN);
   uint64_t num_keys_written = GetDBStats(InternalStats::NUMBER_KEYS_WRITTEN);
   uint64_t write_other = GetDBStats(InternalStats::WRITE_DONE_BY_OTHER);
@@ -983,6 +985,15 @@ void InternalStats::DumpDBStats(std::string* value) {
            NumberToHumanString(write_self).c_str(),
            (write_other + write_self) / static_cast<double>(write_self + 1),
            user_bytes_written / kGB, user_bytes_written / kMB / seconds_up);
+  value->append(buf);
+  // keys: total number of key reads issued by all the read requests
+  // 
+  // The format is the same for interval stats.
+  snprintf(buf, sizeof(buf),
+           "Cumulative reads: %s keys, "
+           "read_bytes: %.2f GB, %.2f MB/s\n",
+           NumberToHumanString(num_keys_read).c_str(),
+           user_bytes_read / kGB, user_bytes_read / kMB / seconds_up);
   value->append(buf);
   // WAL
   snprintf(buf, sizeof(buf),
@@ -1020,6 +1031,18 @@ void InternalStats::DumpDBStats(std::string* value) {
           std::max(interval_seconds_up, 0.001)),
       value->append(buf);
 
+  uint64_t interval_num_keys_read =
+      num_keys_read - db_stats_snapshot_.num_keys_read;
+  snprintf(
+      buf, sizeof(buf),
+      "Interval reads: %s keys, "
+      "read_bytes: %.2f MB, %.2f MB/s\n",
+      NumberToHumanString(interval_num_keys_read).c_str(),
+      (user_bytes_read - db_stats_snapshot_.read_bytes) / kMB,
+      (user_bytes_read - db_stats_snapshot_.read_bytes) / kMB /
+          std::max(interval_seconds_up, 0.001)),
+      value->append(buf);
+
   uint64_t interval_write_with_wal =
       write_with_wal - db_stats_snapshot_.write_with_wal;
   uint64_t interval_wal_synced = wal_synced - db_stats_snapshot_.wal_synced;
@@ -1046,6 +1069,8 @@ void InternalStats::DumpDBStats(std::string* value) {
   value->append(buf);
 
   db_stats_snapshot_.seconds_up = seconds_up;
+  db_stats_snapshot_.num_keys_read = num_keys_read;
+  db_stats_snapshot_.read_bytes = user_bytes_read;
   db_stats_snapshot_.ingest_bytes = user_bytes_written;
   db_stats_snapshot_.write_other = write_other;
   db_stats_snapshot_.write_self = write_self;
