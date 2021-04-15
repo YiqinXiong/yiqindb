@@ -964,6 +964,17 @@ void InternalStats::DumpDBStats(std::string* value) {
   uint64_t wal_synced = GetDBStats(InternalStats::WAL_FILE_SYNCED);
   uint64_t write_with_wal = GetDBStats(InternalStats::WRITE_WITH_WAL);
   uint64_t write_stall_micros = GetDBStats(InternalStats::WRITE_STALL_MICROS);
+  // The number of calls to seek/next/prev
+  uint64_t num_seek = GetDBStats(InternalStats::NUMBER_DB_SEEK);
+  uint64_t num_next = GetDBStats(InternalStats::NUMBER_DB_NEXT);
+  uint64_t num_prev = GetDBStats(InternalStats::NUMBER_DB_PREV);
+  // The number of calls to seek/next/prev that returned data
+  uint64_t num_seek_found = GetDBStats(InternalStats::NUMBER_DB_SEEK_FOUND);
+  uint64_t num_next_found = GetDBStats(InternalStats::NUMBER_DB_NEXT_FOUND);
+  uint64_t num_prev_found = GetDBStats(InternalStats::NUMBER_DB_PREV_FOUND);
+  // The number of uncompressed bytes read from an iterator.
+  // Includes size of key and value.
+  uint64_t iter_read_bytes = GetDBStats(InternalStats::ITER_BYTES_READ);
 
   const int kHumanMicrosLen = 32;
   char human_micros[kHumanMicrosLen];
@@ -994,6 +1005,17 @@ void InternalStats::DumpDBStats(std::string* value) {
            "read_bytes: %.2f GB, %.2f MB/s\n",
            NumberToHumanString(num_keys_read).c_str(),
            user_bytes_read / kGB, user_bytes_read / kMB / seconds_up);
+  value->append(buf);
+  snprintf(buf, sizeof(buf),
+           "Cumulative scans: %s seeks, %s seekfounds, %s nexts, %s nextfounds, %s prevs, %s prevfounds, "
+           "iter_read_bytes: %.2f GB, %.2f MB/s\n",
+           NumberToHumanString(num_seek).c_str(),
+           NumberToHumanString(num_seek_found).c_str(),
+           NumberToHumanString(num_next).c_str(),
+           NumberToHumanString(num_next_found).c_str(),
+           NumberToHumanString(num_prev).c_str(),
+           NumberToHumanString(num_prev_found).c_str(),
+           iter_read_bytes / kGB, iter_read_bytes / kMB / seconds_up);
   value->append(buf);
   // WAL
   snprintf(buf, sizeof(buf),
@@ -1043,6 +1065,33 @@ void InternalStats::DumpDBStats(std::string* value) {
           std::max(interval_seconds_up, 0.001)),
       value->append(buf);
 
+  uint64_t interval_num_seek =
+      num_seek - db_stats_snapshot_.num_seek;
+  uint64_t interval_num_next =
+      num_next - db_stats_snapshot_.num_next;
+  uint64_t interval_num_prev =
+      num_prev - db_stats_snapshot_.num_prev;
+  uint64_t interval_num_seek_found =
+      num_seek_found - db_stats_snapshot_.num_seek_found;
+  uint64_t interval_num_next_found =
+      num_next_found - db_stats_snapshot_.num_next_found;
+  uint64_t interval_num_prev_found =
+      num_prev_found - db_stats_snapshot_.num_prev_found;
+  snprintf(
+      buf, sizeof(buf),
+      "Interval scans: %s seeks, %s seekfounds, %s nexts, %s nextfounds, %s prevs, %s prevfounds, "
+      "iter_read_bytes: %.2f MB, %.2f MB/s\n",
+      NumberToHumanString(interval_num_seek).c_str(),
+      NumberToHumanString(interval_num_seek_found).c_str(),
+      NumberToHumanString(interval_num_next).c_str(),
+      NumberToHumanString(interval_num_next_found).c_str(),
+      NumberToHumanString(interval_num_prev).c_str(),
+      NumberToHumanString(interval_num_prev_found).c_str(),
+      (iter_read_bytes - db_stats_snapshot_.iter_read_bytes) / kMB,
+      (iter_read_bytes - db_stats_snapshot_.iter_read_bytes) / kMB /
+          std::max(interval_seconds_up, 0.001)),
+      value->append(buf);
+
   uint64_t interval_write_with_wal =
       write_with_wal - db_stats_snapshot_.write_with_wal;
   uint64_t interval_wal_synced = wal_synced - db_stats_snapshot_.wal_synced;
@@ -1079,6 +1128,13 @@ void InternalStats::DumpDBStats(std::string* value) {
   db_stats_snapshot_.wal_synced = wal_synced;
   db_stats_snapshot_.write_with_wal = write_with_wal;
   db_stats_snapshot_.write_stall_micros = write_stall_micros;
+  db_stats_snapshot_.num_seek = num_seek;
+  db_stats_snapshot_.num_next = num_next;
+  db_stats_snapshot_.num_prev = num_prev;
+  db_stats_snapshot_.num_seek_found = num_seek_found;
+  db_stats_snapshot_.num_next_found = num_next_found;
+  db_stats_snapshot_.num_prev_found = num_prev_found;
+  db_stats_snapshot_.iter_read_bytes = iter_read_bytes;
 }
 
 /**

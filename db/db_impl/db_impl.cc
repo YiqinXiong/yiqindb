@@ -1708,12 +1708,12 @@ Status DBImpl::GetImpl(const ReadOptions& read_options,
     ReturnAndCleanupSuperVersion(cfd, sv);
 
     auto stats = default_cf_internal_stats_;
-    stats->AddDBStats(InternalStats::NUMBER_KEYS_READ, 1);
+    stats->AddDBStats(InternalStats::NUMBER_KEYS_READ, 1, true);
     RecordTick(stats_, NUMBER_KEYS_READ);
     size_t size = 0;
     if (s.ok()) {
       size = pinnable_val->size();
-      stats->AddDBStats(InternalStats::BYTES_READ, size);
+      stats->AddDBStats(InternalStats::BYTES_READ, size, true);
       RecordTick(stats_, BYTES_READ, size);
       PERF_COUNTER_ADD(get_read_bytes, size);
     }

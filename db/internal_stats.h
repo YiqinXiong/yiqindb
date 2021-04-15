@@ -120,6 +120,17 @@ class InternalStats {
     WRITE_WITH_WAL,
     WRITE_STALL_MICROS,
     INTERNAL_DB_STATS_ENUM_MAX,
+    // The number of calls to seek/next/prev
+    NUMBER_DB_SEEK,
+    NUMBER_DB_NEXT,
+    NUMBER_DB_PREV,
+    // The number of calls to seek/next/prev that returned data
+    NUMBER_DB_SEEK_FOUND,
+    NUMBER_DB_NEXT_FOUND,
+    NUMBER_DB_PREV_FOUND,
+    // The number of uncompressed bytes read from an iterator.
+    // Includes size of key and value.
+    ITER_BYTES_READ,
   };
 
   InternalStats(int num_levels, Env* env, ColumnFamilyData* cfd)
@@ -491,6 +502,17 @@ class InternalStats {
     uint64_t num_keys_written;
     // Total time writes delayed by stalls.
     uint64_t write_stall_micros;
+    // The number of calls to seek/next/prev
+    uint64_t num_seek;
+    uint64_t num_next;
+    uint64_t num_prev;
+    // The number of calls to seek/next/prev that returned data
+    uint64_t num_seek_found;
+    uint64_t num_next_found;
+    uint64_t num_prev_found;
+    // The number of uncompressed bytes read from an iterator.
+    // Includes size of key and value.
+    uint64_t iter_read_bytes;
     double seconds_up;
 
     DBStatsSnapshot()
@@ -504,7 +526,14 @@ class InternalStats {
           write_self(0),
           num_keys_written(0),
           write_stall_micros(0),
-          seconds_up(0) {}
+          seconds_up(0),
+          num_seek(0),
+          num_next(0),
+          num_prev(0),
+          num_seek_found(0),
+          num_next_found(0),
+          num_prev_found(0),
+          iter_read_bytes(0) {}
 
     void Clear() {
       num_keys_read = 0;
@@ -518,6 +547,13 @@ class InternalStats {
       num_keys_written = 0;
       write_stall_micros = 0;
       seconds_up = 0;
+      num_seek = 0;
+      num_next = 0;
+      num_prev = 0;
+      num_seek_found = 0;
+      num_next_found = 0;
+      num_prev_found = 0;
+      iter_read_bytes = 0;
     }
   } db_stats_snapshot_;
 

@@ -162,6 +162,12 @@ class DBIter final: public Iterator {
     }
     RecordTick(statistics_, NO_ITERATOR_DELETED);
     ResetInternalKeysSkippedCounter();
+    auto stats = cfd_->internal_stats();
+    stats->AddDBStats(InternalStats::NUMBER_DB_NEXT, local_stats_.next_count_, true);
+    stats->AddDBStats(InternalStats::NUMBER_DB_NEXT_FOUND, local_stats_.next_found_count_, true);
+    stats->AddDBStats(InternalStats::NUMBER_DB_PREV, local_stats_.prev_count_, true);
+    stats->AddDBStats(InternalStats::NUMBER_DB_PREV_FOUND, local_stats_.prev_found_count_, true);
+    stats->AddDBStats(InternalStats::ITER_BYTES_READ, local_stats_.bytes_read_, true);
     local_stats_.BumpGlobalStatistics(statistics_);
     iter_.DeleteIter(arena_mode_);
   }
@@ -1322,6 +1328,8 @@ void DBIter::Seek(const Slice& target) {
     iter_.Seek(saved_key_.GetInternalKey());
     range_del_agg_.InvalidateRangeDelMapPositions();
   }
+  auto stats = cfd_->internal_stats();
+  stats->AddDBStats(InternalStats::NUMBER_DB_SEEK, 1, true);
   RecordTick(statistics_, NUMBER_DB_SEEK);
   if (iter_.Valid()) {
     if (prefix_extractor_ && prefix_same_as_start_) {
@@ -1336,7 +1344,9 @@ void DBIter::Seek(const Slice& target) {
     if (statistics_ != nullptr) {
       if (valid_) {
         // Decrement since we don't want to count this key as skipped
+        stats->AddDBStats(InternalStats::NUMBER_DB_SEEK_FOUND, 1, true);
         RecordTick(statistics_, NUMBER_DB_SEEK_FOUND);
+        stats->AddDBStats(InternalStats::ITER_BYTES_READ, key().size() + value().size(), true);
         RecordTick(statistics_, ITER_BYTES_READ, key().size() + value().size());
         PERF_COUNTER_ADD(iter_read_bytes, key().size() + value().size());
       }
@@ -1382,6 +1392,8 @@ void DBIter::SeekForPrev(const Slice& target) {
   }
 #endif  // ROCKSDB_LITE
 
+  auto stats = cfd_->internal_stats();
+  stats->AddDBStats(InternalStats::NUMBER_DB_SEEK, 1, true);
   RecordTick(statistics_, NUMBER_DB_SEEK);
   if (iter_.Valid()) {
     if (prefix_extractor_ && prefix_same_as_start_) {
@@ -1395,7 +1407,9 @@ void DBIter::SeekForPrev(const Slice& target) {
     }
     if (statistics_ != nullptr) {
       if (valid_) {
+        stats->AddDBStats(InternalStats::NUMBER_DB_SEEK_FOUND, 1, true);
         RecordTick(statistics_, NUMBER_DB_SEEK_FOUND);
+        stats->AddDBStats(InternalStats::ITER_BYTES_READ, key().size() + value().size(), true);
         RecordTick(statistics_, ITER_BYTES_READ, key().size() + value().size());
         PERF_COUNTER_ADD(iter_read_bytes, key().size() + value().size());
       }
@@ -1433,6 +1447,8 @@ void DBIter::SeekToFirst() {
     range_del_agg_.InvalidateRangeDelMapPositions();
   }
 
+  auto stats = cfd_->internal_stats();
+  stats->AddDBStats(InternalStats::NUMBER_DB_SEEK, 1, true);
   RecordTick(statistics_, NUMBER_DB_SEEK);
   if (iter_.Valid()) {
     saved_key_.SetUserKey(
@@ -1441,7 +1457,9 @@ void DBIter::SeekToFirst() {
     FindNextUserEntry(false /* not skipping */, false /* no prefix check */);
     if (statistics_ != nullptr) {
       if (valid_) {
+        stats->AddDBStats(InternalStats::NUMBER_DB_SEEK_FOUND, 1, true);
         RecordTick(statistics_, NUMBER_DB_SEEK_FOUND);
+        stats->AddDBStats(InternalStats::ITER_BYTES_READ, key().size() + value().size(), true);
         RecordTick(statistics_, ITER_BYTES_READ, key().size() + value().size());
         PERF_COUNTER_ADD(iter_read_bytes, key().size() + value().size());
       }
@@ -1487,9 +1505,13 @@ void DBIter::SeekToLast() {
   }
   PrevInternal();
   if (statistics_ != nullptr) {
+    auto stats = cfd_->internal_stats();
+    stats->AddDBStats(InternalStats::NUMBER_DB_SEEK, 1, true);
     RecordTick(statistics_, NUMBER_DB_SEEK);
     if (valid_) {
+      stats->AddDBStats(InternalStats::NUMBER_DB_SEEK_FOUND, 1, true);
       RecordTick(statistics_, NUMBER_DB_SEEK_FOUND);
+      stats->AddDBStats(InternalStats::ITER_BYTES_READ, key().size() + value().size(), true);
       RecordTick(statistics_, ITER_BYTES_READ, key().size() + value().size());
       PERF_COUNTER_ADD(iter_read_bytes, key().size() + value().size());
     }
