@@ -526,14 +526,14 @@ class InternalStats {
           write_self(0),
           num_keys_written(0),
           write_stall_micros(0),
-          seconds_up(0),
           num_seek(0),
           num_next(0),
           num_prev(0),
           num_seek_found(0),
           num_next_found(0),
           num_prev_found(0),
-          iter_read_bytes(0) {}
+          iter_read_bytes(0),
+          seconds_up(0) {}
 
     void Clear() {
       num_keys_read = 0;
@@ -546,7 +546,6 @@ class InternalStats {
       write_self = 0;
       num_keys_written = 0;
       write_stall_micros = 0;
-      seconds_up = 0;
       num_seek = 0;
       num_next = 0;
       num_prev = 0;
@@ -554,6 +553,7 @@ class InternalStats {
       num_next_found = 0;
       num_prev_found = 0;
       iter_read_bytes = 0;
+      seconds_up = 0;
     }
   } db_stats_snapshot_;
 
