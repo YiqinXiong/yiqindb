@@ -3209,7 +3209,6 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
   const bool may_match =
       FullFilterKeyMayMatch(read_options, filter, key, no_io, prefix_extractor,
                             get_context, &lookup_context);
-  fprintf(stderr,"maymatch:%d, skip_filters:%d, filter:%p\n", may_match, skip_filters, filter);
   if (!may_match) {
     RecordTick(rep_->ioptions.statistics, BLOOM_FILTER_USEFUL);
     PERF_COUNTER_BY_LEVEL_ADD(bloom_filter_useful, 1, rep_->level);
@@ -3243,8 +3242,6 @@ Status BlockBasedTable::Get(const ReadOptions& read_options, const Slice& key,
                                prefix_extractor, v.handle.offset(), no_io,
                                /*const_ikey_ptr=*/nullptr, get_context,
                                &lookup_context);
-
-      fprintf(stderr,"not_exist_in_filter:%d, filter:%p\n", not_exist_in_filter, filter);
 
       if (not_exist_in_filter) {
         // Not found
